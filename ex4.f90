@@ -7,7 +7,7 @@ program main
   implicit none
 
   character(20):: &
-    expid = 'ty_applied/ex4-ty' ! 実験名
+    expid = 'el/ex4-el' ! 実験名
 
   integer, parameter:: &
     im = 100, & ! x方向格子数
@@ -37,9 +37,9 @@ program main
     dt_sec = 100.d0, & ! 時間刻み幅
     time_to_start_sec = 0.d0, & ! 実験開始時刻
     time_to_end_sec = 86400.d0*30.d0*12.d0, &   ! 実験終了時刻（１年）
-    !   time_to_end_sec     = dt_sec * 10.d0, & ! 実験終了時刻（１年）
+  !   time_to_end_sec     = dt_sec * 10.d0, & ! 実験終了時刻（１年）
     output_interval_sec = 86400.d0*10.d0, & ! 出力時間間隔（１０日）
-    !   output_interval_sec = dt_sec , & ! 出力時間間隔（１０日）
+  !   output_interval_sec = dt_sec , & ! 出力時間間隔（１０日）
     asf = 0.5d0 ! アセリンフィルター係数
   real(8), parameter :: fric_non = 0.0d0/dz_m  !- linear friction coefficient (for Stommel 1948)
   !real(8),parameter :: fric_non = 0.02d0 / dz_m  !- linear friction coefficient (for Stommel 1948) !摩擦あり
@@ -127,24 +127,33 @@ program main
     ea_m(:, :) = 0
     eb_m(:, :) = 0
     ! TODO 東西方向に温度勾配をつける（エルニーニョ）
-    ! TODO 温度躍層を再現する ~100m:一定 100m: 25℃ 250m:15℃ ~ 600m:5℃ 等間隔
-    ! y方向に強制力と同じ温度分布・z方向に二次関数的に減少していく温度分布
-    do j = 1, jm
-      ! do k=1,km
-      !    ta_c(:,j,k)   = (5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0)*((k/km)**2+0.2d0)
-      !    tb_c(:,j,k)   = (5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0)*((k/km)**2+0.2d0)
-      ! end do
-      do k = km, km - 1, -1
-        ta_c(:, j, k) = (5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0)
-        tb_c(:, j, k) = (5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0)
-      end do
-      do k = km - 2, km - 4, -1
-        ta_c(:, j, k) = (3.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 22.d0)+(k - (km - 2))*5.d0*(1 - (0.2d0)*abs(dble(j - jm/2))/(dble(jm/2)))
-        tb_c(:, j, k) = ta_c(:, j, k)
-      end do
-      do k = km - 5, 1, -1
-        ta_c(:, j, k) = max(3.d0, (2.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 11.d0)+(k - (km - 5))*1.4d0*(1 - (0.4d0)*abs(dble(j - jm/2))/(dble(jm/2))))
-        tb_c(:, j, k) = ta_c(:, j, k)
+    do i=1,im
+      do j = 1, jm
+        ! do k=1,km
+        !    ta_c(:,j,k)   = (5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0)*((k/km)**2+0.2d0)
+        !    tb_c(:,j,k)   = (5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0)*((k/km)**2+0.2d0)
+        ! end do
+        do k = km, km - 1, -1
+          if (i<=30) then
+            ta_c(i, j, k) = (5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0) + 3.d0
+          end if
+          ta_c(i, j, k) = (5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0) - 2.d0
+          tb_c(i, j, k) = ta_c(i,j,k)
+        end do
+        do k = km - 2, km - 4, -1
+          if (i<=30) then
+            ta_c(:, j, k) = (3.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 22.d0) &
+            & +(k - (km - 2))*5.d0*(1 - (0.2d0)*abs(dble(j - jm/2))/(dble(jm/2))) + 1.d0
+          end if
+          ta_c(:, j, k) = (3.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 22.d0) &
+          & +(k - (km - 2))*5.d0*(1 - (0.2d0)*abs(dble(j - jm/2))/(dble(jm/2)))
+          tb_c(:, j, k) = ta_c(:, j, k)
+        end do
+        do k = km - 5, 1, -1
+          ta_c(:, j, k) = max(3.d0, (2.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 11.d0) &
+          & +(k - (km - 5))*1.4d0*(1 - (0.4d0)*abs(dble(j - jm/2))/(dble(jm/2))))
+          tb_c(:, j, k) = ta_c(:, j, k)
+        end do
       end do
     end do
     sa_psu(:, :, :) = 0.d0 !- 34からの偏差
@@ -201,8 +210,8 @@ program main
       do j = 1, jm
         do i = 1, im - 1
           adx = ((ub_mps(i, j, k) + ub_mps(i + 1, j, k))**2 - (ub_mps(i - 1, j, k) + ub_mps(i, j, k))**2)*0.25d0/dx_m
-               ady = ((vb_mps(i,j,k)+vb_mps(i+1,j,k))*(ub_mps(i,j,k)+ub_mps(i,j+1,k))-(vb_mps(i,j-1,k)+vb_mps(i+1,j-1,k))*(ub_mps(i,j-1,k)+ub_mps(i,j,k)))*0.25d0/dy_m
-               adz = ((ub_mps(i,j,k)+ub_mps(i,j,k+1))*(ww_mps(i,j,k)+ww_mps(i+1,j,k)) - (ub_mps(i,j,k-1)+ub_mps(i,j,k))*(ww_mps(i,j,k-1)+ww_mps(i+1,j,k-1)))*0.25d0/dz_m
+          ady = ((vb_mps(i,j,k)+vb_mps(i+1,j,k))*(ub_mps(i,j,k)+ub_mps(i,j+1,k))-(vb_mps(i,j-1,k)+vb_mps(i+1,j-1,k))*(ub_mps(i,j-1,k)+ub_mps(i,j,k)))*0.25d0/dy_m
+          adz = ((ub_mps(i,j,k)+ub_mps(i,j,k+1))*(ww_mps(i,j,k)+ww_mps(i+1,j,k)) - (ub_mps(i,j,k-1)+ub_mps(i,j,k))*(ww_mps(i,j,k-1)+ww_mps(i+1,j,k-1)))*0.25d0/dz_m
           cor = fs_psec(j)*(vb_mps(i, j, k) + vb_mps(i + 1, j, k) + vb_mps(i, j - 1, k) + vb_mps(i + 1, j - 1, k))*0.25d0
           pre = -1/rr_kgpm3(i, j, k)*(pp_npm2(i + 1, j, k) - pp_npm2(i, j, k))/dx_m
           dfx = ah_m2ps*(ua_mps(i + 1, j, k) - 2.d0*ua_mps(i, j, k) + ua_mps(i - 1, j, k))/(dx_m**2)
@@ -218,9 +227,9 @@ program main
     do k = 1, km
       do j = 1, jm - 1
         do i = 1, im
-               adx = ((vb_mps(i,j,k)+vb_mps(i+1,j,k))*(ub_mps(i,j+1,k)+ub_mps(i,j,k))-(vb_mps(i-1,j,k)+vb_mps(i,j,k))*(ub_mps(i-1,j+1,k)+ub_mps(i-1,j,k)))*0.25d0/dx_m
+          adx = ((vb_mps(i,j,k)+vb_mps(i+1,j,k))*(ub_mps(i,j+1,k)+ub_mps(i,j,k))-(vb_mps(i-1,j,k)+vb_mps(i,j,k))*(ub_mps(i-1,j+1,k)+ub_mps(i-1,j,k)))*0.25d0/dx_m
           ady = ((vb_mps(i, j + 1, k) + vb_mps(i, j, k))**2 - (vb_mps(i, j, k) + vb_mps(i, j - 1, k))**2)*0.25d0/dy_m
-               adz = ((vb_mps(i,j,k+1)+vb_mps(i,j,k))*(ww_mps(i,j,k)+ww_mps(i,j+1,k))-(vb_mps(i,j,k)+vb_mps(i,j,k-1))*(ww_mps(i,j,k-1)+ww_mps(i,j+1,k-1)))*0.25d0/dz_m
+          adz = ((vb_mps(i,j,k+1)+vb_mps(i,j,k))*(ww_mps(i,j,k)+ww_mps(i,j+1,k))-(vb_mps(i,j,k)+vb_mps(i,j,k-1))*(ww_mps(i,j,k-1)+ww_mps(i,j+1,k-1)))*0.25d0/dz_m
           cor = fs_psec(j)*(ub_mps(i - 1, j, k) + ub_mps(i, j, k) + ub_mps(i - 1, j + 1, k) + ub_mps(i, j + 1, k))*0.25d0
           pre = -1/rr_kgpm3(i, j, k)*(pp_npm2(i, j + 1, k) - pp_npm2(i, j, k))/dy_m
           dfx = ah_m2ps*(va_mps(i + 1, j, k) - 2.d0*va_mps(i, j, k) + va_mps(i - 1, j, k))/(dx_m**2)
@@ -250,9 +259,9 @@ program main
     do k = 1, km
       do j = 1, jm
         do i = 1, im
-   adx = -((tb_c(i + 1, j, k) + tb_c(i, j, k))*ub_mps(i, j, k) - (tb_c(i, j, k) + tb_c(i - 1, j, k))*ub_mps(i - 1, j, k))*0.5d0/dx_m
-   ady = -((tb_c(i, j + 1, k) + tb_c(i, j, k))*vb_mps(i, j, k) - (tb_c(i, j, k) + tb_c(i, j - 1, k))*vb_mps(i, j - 1, k))*0.5d0/dy_m
-   adz = -((tb_c(i, j, k + 1) + tb_c(i, j, k))*ww_mps(i, j, k) - (tb_c(i, j, k) + tb_c(i, j, k - 1))*ww_mps(i, j, k - 1))*0.5d0/dz_m
+          adx = -((tb_c(i + 1, j, k) + tb_c(i, j, k))*ub_mps(i, j, k) - (tb_c(i, j, k) + tb_c(i - 1, j, k))*ub_mps(i - 1, j, k))*0.5d0/dx_m
+          ady = -((tb_c(i, j + 1, k) + tb_c(i, j, k))*vb_mps(i, j, k) - (tb_c(i, j, k) + tb_c(i, j - 1, k))*vb_mps(i, j - 1, k))*0.5d0/dy_m
+          adz = -((tb_c(i, j, k + 1) + tb_c(i, j, k))*ww_mps(i, j, k) - (tb_c(i, j, k) + tb_c(i, j, k - 1))*ww_mps(i, j, k - 1))*0.5d0/dz_m
           dfx = kh_m2ps*(ta_c(i + 1, j, k) - 2*ta_c(i, j, k) + ta_c(i - 1, j, k))/dx_m/dx_m
           dfy = kh_m2ps*(ta_c(i, j + 1, k) - 2*ta_c(i, j, k) + ta_c(i, j - 1, k))/dy_m/dy_m
           dfz = kv_m2ps*(ta_c(i, j, k + 1) - 2*ta_c(i, j, k) + ta_c(i, j, k - 1))/dz_m/dz_m
