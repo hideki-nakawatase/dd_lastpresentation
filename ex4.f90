@@ -6,8 +6,8 @@
 program main
    implicit none
 
-   character(10):: &
-      expid='ex4-basic' ! 実験名
+   character(20):: &
+      expid='ty_applied/ex4-ty' ! 実験名
 
    integer,parameter:: &
       im = 100, & ! x方向格子数
@@ -37,9 +37,9 @@ program main
       dt_sec   = 100.d0, & ! 時間刻み幅
       time_to_start_sec   = 0.d0, & ! 実験開始時刻
       time_to_end_sec     = 86400.d0*30.d0*12.d0, &   ! 実験終了時刻（１年）
-   !time_to_end_sec     = dt_sec * 10.d0, & ! 実験終了時刻（１年）
+   !   time_to_end_sec     = dt_sec * 10.d0, & ! 実験終了時刻（１年）
       output_interval_sec = 86400.d0*10.d0,       & ! 出力時間間隔（１０日）
-   !output_interval_sec = dt_sec , & ! 出力時間間隔（１０日）
+   !   output_interval_sec = dt_sec , & ! 出力時間間隔（１０日）
       asf      = 0.5d0 ! アセリンフィルター係数
    real(8),parameter :: fric_non = 0.0d0 / dz_m  !- linear friction coefficient (for Stommel 1948)
    !real(8),parameter :: fric_non = 0.02d0 / dz_m  !- linear friction coefficient (for Stommel 1948) !摩擦あり
@@ -102,7 +102,8 @@ program main
    do j=1,jm
       do i=1,im
          tx_npm2(i,j) = t0_npm2 * cos( dpi*( (dble(j-jm/2)-0.5d0) / dble(jm/2) ) ) !亜熱帯循環
-         ! ty_npm2(i,j) = t0_npm2 * sin( dpi/2 * (dble(j-jm/2)-0.5d0) / dble(jm/2) )
+         !ty_npm2(i,j) = 0.d0
+         ty_npm2(i,j) = t0_npm2 * sin( dpi/2 * (dble(j-jm/2)-0.5d0) / dble(jm/2) )
          ! 海面温度は赤道上で30℃,南北端で２５℃になるように設定
          at_c(i,j)      = 5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0 ! 東西一様水温
          sf_psumps(i,j) = 0.d0
@@ -126,12 +127,25 @@ program main
       ea_m(:,:)     = 0
       eb_m(:,:)     = 0
       ! TODO 東西方向に温度勾配をつける（エルニーニョ）
-      ! TODO 温度躍層を再現する
+      ! TODO 温度躍層を再現する ~100m:一定 100m: 25℃ 250m:15℃ ~ 600m:5℃ 等間隔
       ! y方向に強制力と同じ温度分布・z方向に二次関数的に減少していく温度分布
       do j=1,jm
-         do k=1,km
-            ta_c(:,j,k)   = (5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0)*((k**2)/km/km)
-            tb_c(:,j,k)   = (5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0)*((k**2)/km/km)
+         ! do k=1,km
+         !    ta_c(:,j,k)   = (5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0)*((k/km)**2+0.2d0)
+         !    tb_c(:,j,k)   = (5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0)*((k/km)**2+0.2d0)
+         ! end do
+         do k=km,km-1,-1
+            ta_c(:,j,k)=(5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0)
+            tb_c(:,j,k)=(5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 25.d0)
+         end do
+         do k=km-2,km-4,-1
+            ! jについての緩和が未完成
+            ta_c(:,j,k)=(5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 20.d0)+(k-(km-2))*5.d0*(1-(0.02d0)*abs(dble(j-jm/2))/(dble(jm/2)))
+            tb_c(:,j,k)=(5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 20.d0)+(k-(km-2))*5.d0*(1-(0.02d0)*abs(dble(j-jm/2))/(dble(jm/2)))
+         end do
+         do k=km-5,1,-1
+            ta_c(:,j,k)=(5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 10.d0)+(k-(km-5))*1.4d0*(1-(0.02d0)*abs(dble(j-jm/2))/(dble(jm/2)))
+            tb_c(:,j,k)=(5.d0 *cos( dpi*( dble(j-jm/2)-0.5d0 ) / dble(jm/2)) + 10.d0)+(k-(km-5))*1.4d0*(1-(0.02d0)*abs(dble(j-jm/2))/(dble(jm/2)))
          end do
       end do
       sa_psu(:,:,:) = 0.d0 !- 34からの偏差
@@ -185,7 +199,6 @@ program main
       ! 予報量の計算
       ! u
       do k = 1, km
-
          do j = 1, jm
             do i = 1, im - 1
                adx = ((ub_mps(i,j,k)+ub_mps(i+1,j,k))**2-(ub_mps(i-1,j,k)+ub_mps(i,j,k))**2)*0.25d0/dx_m
