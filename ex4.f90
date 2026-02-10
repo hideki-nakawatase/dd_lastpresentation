@@ -7,7 +7,7 @@ program main
   implicit none
 
   character(20):: &
-    expid = 'el/ex4-el' ! 実験名
+    expid = 'el_6y/ex4-el' ! 実験名
 
   integer, parameter:: &
     im = 100, & ! x方向格子数
@@ -22,6 +22,7 @@ program main
     bt_pmsec = 1.d-11, & ! ベータ
     er_m = 6370.d3, & ! 地球半径
     om_psec = 7.29d-5, & ! 地球自転速度
+!　粘性係数を小さくすることで引きづりを抑える
     ah_m2ps = 1.d5, & ! 水平渦粘性係数
     av_m2ps = 1.d-3, & ! 鉛直渦粘性係数
     kh_m2ps = 5.d3, & ! 水平渦拡散係数
@@ -34,9 +35,10 @@ program main
     dx_m = 200.d3, & ! x方向格子幅
     dy_m = 100.d3, & ! y方向格子幅
     dz_m = 50.d0, & ! z方向格子幅
+!　粘性係数を下げたらdtも下げる
     dt_sec = 100.d0, & ! 時間刻み幅
     time_to_start_sec = 0.d0, & ! 実験開始時刻
-    time_to_end_sec = 86400.d0*30.d0*12.d0, &   ! 実験終了時刻（１年）
+    time_to_end_sec = 6.d0*86400.d0*30.d0*12.d0, &   ! 実験終了時刻（１年）
   !   time_to_end_sec     = dt_sec * 10.d0, & ! 実験終了時刻（１年）
     output_interval_sec = 86400.d0*10.d0, & ! 出力時間間隔（１０日）
   !   output_interval_sec = dt_sec , & ! 出力時間間隔（１０日）
@@ -105,7 +107,11 @@ program main
       !ty_npm2(i,j) = 0.d0
       ty_npm2(i, j) = t0_npm2*sin(dpi/2*(dble(j - jm/2) - 0.5d0)/dble(jm/2))
       ! 海面温度は赤道上で30℃,南北端で２５℃になるように設定
-      at_c(i, j) = 5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0 ! 東西一様水温
+      if (i<=30) then
+        at_c(i, j ) = (5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0) + 3.d0
+      end if
+      at_c(i, j) = (5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0) - 2.d0
+      !at_c(i, j) = 5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0 ! 東西一様水温
       sf_psumps(i, j) = 0.d0
     end do
   end do
@@ -136,17 +142,19 @@ program main
         do k = km, km - 1, -1
           if (i<=30) then
             ta_c(i, j, k) = (5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0) + 3.d0
+          else
+            ta_c(i, j, k) = (5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0) - 2.d0
           end if
-          ta_c(i, j, k) = (5.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 25.d0) - 2.d0
           tb_c(i, j, k) = ta_c(i,j,k)
         end do
         do k = km - 2, km - 4, -1
           if (i<=30) then
             ta_c(:, j, k) = (3.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 22.d0) &
             & +(k - (km - 2))*5.d0*(1 - (0.2d0)*abs(dble(j - jm/2))/(dble(jm/2))) + 1.d0
+          else
+            ta_c(:, j, k) = (3.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 22.d0) &
+            & +(k - (km - 2))*5.d0*(1 - (0.2d0)*abs(dble(j - jm/2))/(dble(jm/2)))
           end if
-          ta_c(:, j, k) = (3.d0*cos(dpi*(dble(j - jm/2) - 0.5d0)/dble(jm/2)) + 22.d0) &
-          & +(k - (km - 2))*5.d0*(1 - (0.2d0)*abs(dble(j - jm/2))/(dble(jm/2)))
           tb_c(:, j, k) = ta_c(:, j, k)
         end do
         do k = km - 5, 1, -1
